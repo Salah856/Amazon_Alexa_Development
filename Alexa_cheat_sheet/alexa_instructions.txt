@@ -1,0 +1,584 @@
+Amazon Alexa Skill Development
+
+Interaction with an Alexa Skill
+
+User says Alexa (Wake Word) which tells Alexa to listen
+User says Alexa open skill name and Alexa opens that skill (Launch Words : tell, ask, open, launch, and use)
+User says Alexa ask Zoo Bee to multiply 3 times 5 (Zoo Bee is the Invocation Name) (Utterance : Users request) (Intent : Multiply is an action that will be handled)
+Alexa takes the information (Slots) 3 & 5 and passes them to be handled by a function called multiply in the Zoo Bee Skill using JSON (JavaScript Object Notation)
+Zoo Bee has a lambda function that contains functions (Intent Handlers) that except data (slots) and return JSON to be read by Alexa
+Skills can also pass text or images to be displayed on Alexa devices with screens
+
+Steps to Build a Skill
+
+Write a script that details the phrases users may use when interacting with your skill
+Define the phrases you expect to receive from the user (Utterances)
+Define the data that you expect from the user and its data types (Slots)
+Define the commands you want to handle (Intents) Multiply is an example of an Intent
+You define your Utterances, Slots and Intents in the Alexa Developer Console
+You define how to handle the above and produce text to be read in your Lambda function
+
+Installation
+
+Go to developer.amazon.com and click on Amazon Alexa
+Login using your Amazon password
+Fill out required registration info
+Click Amazon Alexa -> Create Alexa Skills -> Console -> Create Skill [We'll be Back]
+Create an AWS Free account (Amazon Web Service) 
+Click All services -> Amazon S3 -> You can store files and other data in Buckets
+It is always a good idea to create a backup of your data
+To upload files click on the Bucket named derekbanasdata -> Upload
+Click All services -> IAM
+
+IAM Identity and Access Management
+
+Controls access to AWS resources, so you can define who and how resources can be used. To access IAM go to Services -> IAM
+
+Click on Roles on the left side of the screen. Click Create Role. Select AWS service -> Click Lambda - > Click button Next: Permissions
+
+Now you have to grant policies. We'll add AmazonS3FullAccess and AWSLambdaFullAccess. Click button Next: Tags
+
+I'm not going to add a tag -> Click Next: Review
+
+Give the role a name S3AndLambdaRole -> Click Create role
+
+Build Zoo Bee
+
+Go to https://developer.amazon.com/alexa/console/ask
+Click Create Skill
+Name it zoo bee, select Custom Skill, select Alexa-Hosted (Node.js)
+Click Create skill
+Select Hello World Skill
+Click Code tab
+
+const Alexa = require('ask-sdk-core');
+
+// Handler called when the app launches
+const LaunchRequestHandler = {
+    // Define requests the handler responds to
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
+    },
+    // Creates the response sent back to the user
+    handle(handlerInput) {
+        // Message spoken
+        const speakOutput = "Hi I am Zoo Bee. What multiplication problem should I solve?";
+        // This text is used to guide the user to answer in a certain way
+        const repromptText = "If you asked what is 3 times 5 I will respond with 15."
+        // Define card title for screens
+        const cardTitle = "I solve multiplication problems";
+        // Define text to show on screen
+        const cardContent = "If you asked what is 3 times 5 I will respond with 15.";
+        // Alexa speaks text in speakOutput
+        // If you have reprompt then you wait for a response from the user for 5 seconds
+        // You output to screens using withSimpleCard
+        // getResponse converts the responseBuilders work into the response the skill returns
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .withSimpleCard(cardTitle, cardContent)
+            .reprompt(repromptText)
+            .getResponse();
+    }
+};
+
+7. Click Save & Deploy
+8. Click the Build tab
+9. Click + Add next to Intents
+10. Create custom intent named MultiplyIntent
+11. Add custom Utterances
+12. Create slots numone and numtwo of type AMAZON.NUMBER
+13. You don't need to require confirmation. That is used for things like making purchases, sending emails, etc.
+14. Delete HelloWorldIntent
+15. Save & Build Model
+16. Make the following changes to HelloWorldIntentHandler
+
+const MultiplyIntentHandler = {
+    canHandle(handlerInput) {
+        // Define this function is called when a MultiplyIntent request comes through
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'MultiplyIntent';
+    },
+    handle(handlerInput) {
+        // Get the 2 numbers spoke by the user and convert to floats
+        const numone = parseFloat(handlerInput.requestEnvelope.request.intent.slots.numone.value);
+        const numtwo = parseFloat(handlerInput.requestEnvelope.request.intent.slots.numtwo.value);
+        const answer = numone * numtwo;
+        const speakOutput = `${numone} times ${numtwo} is equal to ${answer}, Bye!`;
+        const cardTitle = "The answer is";
+        const cardContent = `${numone} times ${numtwo} is equal to ${answer}`;
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .withSimpleCard(cardTitle, cardContent)
+            .getResponse();
+    }
+};
+const HelpIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
+    },
+    handle(handlerInput) {
+        const speakOutput = 'You can ask me to multiply 2 numbers. Want to give it a try?';
+        const cardTitle = 'Ask me to multiply';
+        const cardContent = 'You can ask me to multiply 2 numbers. Want to give it a try?';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .withSimpleCard(cardTitle, cardContent)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+
+17. Replace HelloWorldIntentHandler with MultiplyIntentHandler in addRequestHandlers
+18. Test your skill -> Save & Deploy -> Test Tab -> Switch dropdown to Development
+
+Add the Ability to Save Data
+
+Click Code Tab -> Open package.json
+Change name to zoo-bee and add a dependency for the persistence adapter and Save
+
+{
+  "name": "zoo-bee",
+  "version": "1.1.0",
+  "description": "alexa utility for quickly building skills",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Amazon Alexa",
+  "license": "ISC",
+  "dependencies": {
+    "ask-sdk-core": "^2.6.0",
+    "ask-sdk-model": "^1.18.0",
+    "aws-sdk": "^2.326.0",
+    "ask-sdk-s3-persistence-adapter": "^2.0.0"
+  }
+}
+
+3. Add following to index.js
+
+const Alexa = require('ask-sdk-core');
+// Allows you to save and read user data
+const persistenceAdapter = require('ask-sdk-s3-persistence-adapter');
+
+4. Add persistence adapter to exports.handler
+
+exports.handler = Alexa.SkillBuilders.custom()
+    .withPersistenceAdapter(
+    new persistenceAdapter.S3PersistenceAdapter({bucketName:process.env.S3_PERSISTENCE_BUCKET})
+    )
+
+
+5. Update MultiplyIntentHandler and Save
+
+const MultiplyIntentHandler = {
+    canHandle(handlerInput) {
+        // Define this function is called when a MultiplyIntent request comes through
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'MultiplyIntent';
+    },
+    // We need to save user data without slowing down the execution, so I'll add
+    // the ability to execute code asynchronously by putting async infront of 
+    // this function 
+    async handle(handlerInput) {
+        // The attributes manager is needed to save data
+        const attributesManager = handlerInput.attributesManager;
+        
+        // Get the 2 numbers spoke by the user and convert to floats
+        const numone = parseFloat(handlerInput.requestEnvelope.request.intent.slots.numone.value);
+        const numtwo = parseFloat(handlerInput.requestEnvelope.request.intent.slots.numtwo.value);
+        const answer = numone * numtwo;
+        
+        // Tell Amazon S3 to save the above values
+        const calcAttributes = {
+            "numone": numone,
+            "numtwo": numtwo,
+            "answer": answer
+        };
+        
+        // Cause the function to pause until data is saved
+        attributesManager.setPersistentAttributes(calcAttributes);
+        await attributesManager.savePersistentAttributes();
+        
+        const speakOutput = `${numone} times ${numtwo} is equal to ${answer}, Bye!`;
+        const cardTitle = "The answer is";
+        const cardContent = `${numone} times ${numtwo} is equal to ${answer}`;
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .withSimpleCard(cardTitle, cardContent)
+            .getResponse();
+    }
+};
+
+6. Create a new Intent Handler that retrieves saved calculations
+	a. Click Build Tab
+	b. Click + Add to create a new Intent
+	c. Name it GetCalcIntent
+	d. Add Utterances : Get previous calculation, Get last calculation, What was my last calculation, Last calculation, Previous calculation
+	e. Save and Build
+
+7. Add GetCalcIntentHandler
+	a. Click Code Tab
+	
+const GetCalcIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'GetCalcIntent';
+    },
+    async handle(handlerInput) {
+        const attributesManager = handlerInput.attributesManager;
+        const sessionAttributes = await attributesManager.getPersistentAttributes() || {};
+        const numone = sessionAttributes.hasOwnProperty('numone') ? sessionAttributes.numone : 0;
+        const numtwo = sessionAttributes.hasOwnProperty('numtwo') ? sessionAttributes.numtwo : 0;
+        const answer = sessionAttributes.hasOwnProperty('answer') ? sessionAttributes.answer : 0;
+        let speakOutput = `Sorry I couldn't retrieve your last calculation`;
+        let cardTitle = "No Calculation Found";
+        let cardContent = `Sorry I couldn't retrieve your last calculation`;
+        if (numone && numtwo && answer){
+            speakOutput = `${numone} times ${numtwo} is equal to ${answer}, was your last calculation`;
+            cardTitle = "Previous Calculation";
+            cardContent = `${numone} times ${numtwo} is equal to ${answer}`;
+        } 
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .withSimpleCard(cardTitle, cardContent)
+            .getResponse();
+    }
+};
+
+8. Add GetCalcIntentHandler to addRequestHandlers, Save & Deploy
+
+9. HelpIntentHandler defines what is said if the user asks for help
+
+10. CancelAndStopIntentHandler defines what is said if the user asks to stop the skill
+
+11. SessionEndedRequestHandler is used to save data and perform other clean up operations after a skill ends
+
+12. If you try to trigger an intent, but forgot to add it to addRequestHandlers then IntentReflectorHandler will say You just triggered "The Name of the Intent"
+
+13. ErrorHandler is the default error handler for your skill if something goes wrong
+
+Alexa Quiz Skill
+
+Go to developer.amazon.com
+Click Amazon Alexa
+Create Alexa Skills
+Click Console
+Click Create Skill
+Name it quiz bee -> Custom Skill -> Alexa Hosted Node.js
+Click Create skill
+Quiz Game Skill
+Click Choose button
+Click Code tab
+Do a Find on Alabama -> Here is where the quiz information is. You can customize this to make your own type of quiz
+Test Tab -> Select Development
+Click microphone and say "Open Quiz Bee"
+
+Alexa Stock App
+
+Go to https://www.alphavantage.co/support/#api-key
+Get your API key
+https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=IBM&apikey= UZXXNQA2AROXA3SB
+Go to developer.amazon.com/alexa 
+Give name stock bee, Custom, Node.js, Create Skill
+Hello World -> Choose
+Click Build Tab
+Click Add next to Slot Types -> Create custom slot type -> Name tickers -> Enter MSFT, AMZN, AAPL, GOOGL
++ Add Intent -> GetStockIntent -> Create custom intent
+Add utterances with the slot ticker of type tickers -> Save & Build
+Click Code tab
+
+Stock Prices
+
+Go to developer.amazon.com
+Create Skill
+stock prices -> Custom -> Provision your own -> Create Skill
+Start from Scratch -> Choose
+Click Build Tab
+Click Add next to Slot Types -> Create custom slot type -> Name tickers -> Enter MSFT, IBM, AMZN, AAPL, GOOGL
++ Add Intent -> GetStockIntent -> Create custom intent
+Add Utterance -> Get the price for {ticker} -> Create Slot ticker and give Slot Type of tickers
+Add Utterance Get {ticker} price
+Save Model + Build Model
+Go to aws.amazon.com
+Create Function
+Browse Serverless app Repository -> alexa-skills-kit-nodejs-factskill
+Application name stocks-two -> IdentityNameParameter index.handler -> Deploy
+Test App Button
+Click hello-world at the bottom of the screen
+Set Trigger to Alexa Skills Kit
+Go to Build Tab Endpoint in Alexa Developers Console and copy and paste your Skill ID
+There is no destination -> Save
+Create new file functions.js and update index.js
+
+functions.js
+
+// Allows you to establish an HTTPS connection
+const https = require("https");
+
+const myfunctions = {
+  // Make an HTTP request and retrieve data using options
+  // which include the host and path
+  getData: function(options){
+    console.log("Entered getData");
+      return new Promise(function(resolve, reject){
+          var request = https.request(options, function(response) {
+              // Reject if status code is bad
+              console.log(`Status Code ${response.statusCode}`);
+              if (response.statusCode < 200 || response.statusCode >= 300){
+                  return reject(new Error("Status Code" + response.statusCode));
+              }
+
+              // Get data sent by Alpha Vantage
+              var body = [];
+              response.on("data", function(chunk) {
+                body.push(chunk);
+              });
+
+              // Processing ends
+              response.on("end", function(){
+                 try {
+                     body = JSON.parse(Buffer.concat(body).toString());
+                 } catch (error) {
+                     reject(error);
+                 }
+                 resolve(body);
+              });
+          });
+          // Check for other errors
+          request.on("error", function(error) {
+              reject(error);
+          });
+          // End the request
+          request.end();
+      });
+  }
+};
+
+// Export myfunctions object so it can be used in index.js
+module.exports = myfunctions;
+
+index.js
+
+const Alexa = require('ask-sdk-core');
+
+// Provide access to the myfunctions object which retrieves data
+const actions = require('./functions');
+
+// Will hole the stock ticker symbol
+var stock_ticker = "MSFT";
+
+// API Key for Alpha Vantage
+var av_api_key = "UZXXNQA2AROXA3SB";
+
+// Will store the retrieved stock price
+var stock_price = 0.00;
+
+// Parts of the Alpha Vantage URL
+// "/query?function=TIME_SERIES_DAILY&symbol=" + stock_ticker + "&apikey=" + av_api_key
+var av_api_host = "www.alphavantage.co";
+var av_api_path_1 = "/query?function=TIME_SERIES_DAILY&symbol=";
+var av_api_path_2 = "&apikey=" + av_api_key;
+
+const LaunchRequestHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'LaunchRequest';
+    },
+    handle(handlerInput) {
+        let speakOutput = `I'm stock bee, say a ticker for todays high price?`;
+        let repromptOutput = `You can say something like get the price for M. S. F. T. `;
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(repromptOutput)
+            .getResponse();
+    }
+};
+
+
+const GetStockIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'GetStockIntent';
+    },
+    // We'll be calling the API so we must mark this as asynchronous
+    async handle(handlerInput) {
+        console.log("Called GetStockIntentHandler");
+
+        // Get the ticker the user requested
+        let stock_ticker = handlerInput.requestEnvelope.request.intent.slots.ticker.value;
+
+        // Complete the path now that we have the ticker
+        let final_api_path = av_api_path_1 + stock_ticker + av_api_path_2;
+
+        // Set HTTPS options to pass to getData()
+        let options = {
+            host: av_api_host,
+            path: final_api_path,
+            method: "GET"
+        };
+
+        // Log URL passed
+        console.log(av_api_host + final_api_path);
+
+        let speakOutput = "Something went wrong";
+        let cardTitle = "Stock Price";
+        let cardContent = "Get the days high stock price."
+
+        // Because of the use of Promise in getData we can use await
+        try {
+            // Get JSON data requested
+            let jsondata = await actions.getData(options);
+            console.log(jsondata);
+            // Check if useable data was received
+            let status = jsondata.status;
+            console.log(`Status : ${status}`);
+            // if(status === "OK"){
+                // Get the Daily High Stock Price
+                // Get the 2nd JSON object in the JSON data
+                var data_key_obj = jsondata[Object.keys(jsondata)[1]];
+                // Get the first key in the object which is the current date
+                let date_key = Object.keys(data_key_obj)[0];
+                // Use the daily price data + the current date + high price & convert to float
+                let stock_price = parseFloat(jsondata["Time Series (Daily)"][date_key]["2. high"]).toFixed(2);
+                console.log(`Stock Price : ${stock_price}`);
+
+                // Create the final speakOutput on success
+                speakOutput = `The current high price for ${stock_ticker} is ${stock_price}`;
+            // }
+
+        } catch (error){
+            cardTitle = "API Error";
+            cardContent = av_api_host + final_api_path;
+            return handlerInput.responseBuilder
+            .speak(`There was an API error.`)
+            .withSimpleCard(cardTitle, cardContent)
+            .getResponse();
+        }
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
+
+
+
+
+
+const HelpIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
+    },
+    handle(handlerInput) {
+        const speakOutput = 'You can say hello to me! How can I help?';
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+const CancelAndStopIntentHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
+            && (Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.CancelIntent'
+                || Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.StopIntent');
+    },
+    handle(handlerInput) {
+        const speakOutput = 'Goodbye!';
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .getResponse();
+    }
+};
+const SessionEndedRequestHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'SessionEndedRequest';
+    },
+    handle(handlerInput) {
+        if(null!== handlerInput.requestEnvelope.request.error) {
+            console.log(JSON.stringify(handlerInput.requestEnvelope.request.error));
+        }
+        return handlerInput.responseBuilder.getResponse();
+    }
+};
+
+// The intent reflector is used for interaction model testing and debugging.
+// It will simply repeat the intent the user said. You can create custom handlers
+// for your intents by defining them above, then also adding them to the request
+// handler chain below.
+const IntentReflectorHandler = {
+    canHandle(handlerInput) {
+        return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest';
+    },
+    handle(handlerInput) {
+        const intentName = Alexa.getIntentName(handlerInput.requestEnvelope);
+        const speakOutput = `You just triggered ${intentName}`;
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            //.reprompt('add a reprompt if you want to keep the session open for the user to respond')
+            .getResponse();
+    }
+};
+
+// Generic error handling to capture any syntax or routing errors. If you receive an error
+// stating the request handler chain is not found, you have not implemented a handler for
+// the intent being invoked or included it in the skill builder below.
+const ErrorHandler = {
+    canHandle() {
+        return true;
+    },
+    handle(handlerInput, error) {
+        console.log(`~~~~ Error handled: ${error.stack}`);
+        const speakOutput = `Sorry, I had trouble doing what you asked. Please try again.`;
+
+        return handlerInput.responseBuilder
+            .speak(speakOutput)
+            .reprompt(speakOutput)
+            .getResponse();
+    }
+};
+
+// The SkillBuilder acts as the entry point for your skill, routing all request and response
+// payloads to the handlers above. Make sure any new handlers or interceptors you've
+// defined are included below. The order matters - they're processed top to bottom.
+exports.handler = Alexa.SkillBuilders.custom()
+    .addRequestHandlers(
+        LaunchRequestHandler,
+        GetStockIntentHandler,
+        HelpIntentHandler,
+        CancelAndStopIntentHandler,
+        SessionEndedRequestHandler,
+        IntentReflectorHandler, // make sure IntentReflectorHandler is last so it doesn't override your custom intent handlers
+    )
+    .addErrorHandlers(
+        ErrorHandler,
+    )
+    .lambda();
+
+
+Drop down next to text -> Configure Events
+Create new test event -> Event Template : Alexa Intent Get New Fact -> Event Name : GetPrice
+In Request -> 
+
+"request": {
+    "type": "IntentRequest",
+    "requestId": "amzn1.echo-api.request.1234",
+    "timestamp": "2016-10-27T21:06:28Z",
+    "locale": "en-US",
+    "intent": {
+      "name": "GetStockIntent",
+      "slots": {
+          "ticker": {
+              "name": "ticker",
+              "value": "IBM"
+          }
+      }
+    }
+  }
+
+24. Create Button
+25. Click Monitoring tab to see log files
